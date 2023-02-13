@@ -49,77 +49,77 @@ func main() {
 
 	cmd.Start()
 
-	systray.Run(onReady, func() {
+	systray.Run(func() {
+		systray.SetIcon(triforce)
+		configFileButton := systray.AddMenuItem("Import config", "")
+		// setWatchedButton := systray.AddMenuItem("Set Watched Folder", "")
+		systray.AddSeparator()
+		quitButton := systray.AddMenuItem("Quit", "Quit the whole app")
+
+		go func() {
+			for {
+				select {
+				case <-configFileButton.ClickedCh:
+					selectedFilePath, err := zenity.SelectFile(
+						zenity.Filename(""),
+						zenity.FileFilters{
+							{Name: "ShareX configs", Patterns: []string{"*.json", "*.sxcu"}, CaseFold: false},
+						})
+
+					if err != nil {
+						print(err)
+						break
+					}
+
+					fileContents, err := ioutil.ReadFile(selectedFilePath)
+
+					if err != nil {
+						print(err)
+						break
+					}
+
+					homedir, err := os.UserHomeDir()
+
+					if err != nil {
+						print(err)
+						break
+					}
+
+					configFileDirectory := filepath.Join(homedir, "Library/Application Support/hyrule-cli/")
+					_, err = os.Stat(configFileDirectory)
+					if err != nil {
+						os.Mkdir(configFileDirectory, 0755)
+					}
+
+					err = ioutil.WriteFile(filepath.Join(configFileDirectory, "hyrule.json"), fileContents, 0644)
+					if err != nil {
+						break
+					}
+
+					executablePath, err := os.Executable()
+
+					if err != nil {
+						break
+					}
+
+					cmd.Process.Kill()
+
+					cmd := exec.Command(executablePath)
+					cmd.Start()
+
+					// no idea why this is necessary
+					time.Sleep(300 * time.Millisecond)
+					os.Exit(0)
+
+				// case <-setWatchedButton.ClickedCh:
+				// 	println("lol")
+
+				case <-quitButton.ClickedCh:
+					systray.Quit()
+				}
+			}
+		}()
+	}, func() {
 		cmd.Process.Kill()
 	})
-}
-
-func onReady() {
-	systray.SetIcon(triforce)
-	configFileButton := systray.AddMenuItem("Import config", "")
-	// setWatchedButton := systray.AddMenuItem("Set Watched Folder", "")
-	systray.AddSeparator()
-	quitButton := systray.AddMenuItem("Quit", "Quit the whole app")
-
-	go func() {
-		for {
-			select {
-			case <-configFileButton.ClickedCh:
-				selectedFilePath, err := zenity.SelectFile(
-					zenity.Filename(""),
-					zenity.FileFilters{
-						{Name: "ShareX configs", Patterns: []string{"*.json", "*.sxcu"}, CaseFold: false},
-					})
-
-				if err != nil {
-					print(err)
-					break
-				}
-
-				fileContents, err := ioutil.ReadFile(selectedFilePath)
-
-				if err != nil {
-					print(err)
-					break
-				}
-
-				homedir, err := os.UserHomeDir()
-
-				if err != nil {
-					print(err)
-					break
-				}
-
-				configFileDirectory := filepath.Join(homedir, "Library/Application Support/hyrule-cli/")
-				_, err = os.Stat(configFileDirectory)
-				if err != nil {
-					os.Mkdir(configFileDirectory, 0755)
-				}
-
-				err = ioutil.WriteFile(filepath.Join(configFileDirectory, "hyrule.json"), fileContents, 0644)
-				if err != nil {
-					break
-				}
-
-				executablePath, err := os.Executable()
-
-				if err != nil {
-					break
-				}
-
-				cmd := exec.Command(executablePath)
-				cmd.Start()
-
-				// no idea why this is necessary
-				time.Sleep(100 * time.Millisecond)
-				os.Exit(0)
-
-			// case <-setWatchedButton.ClickedCh:
-			// 	println("lol")
-
-			case <-quitButton.ClickedCh:
-				systray.Quit()
-			}
-		}
-	}()
 }
